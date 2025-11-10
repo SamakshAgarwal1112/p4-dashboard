@@ -120,8 +120,8 @@ const PacketFlowChart = ({ packets }) => {
     
     for (let i = 0; i < packets.length; i++) {
       intervals.push({
-        time: new Date(packets[i].timestamp).toLocaleTimeString(),
-        // time: `T${i + 1}`,
+        time: packets[i].timestamp.split("T")[1],
+        index: `T${i + 1}`,
         forwarded: 0,
         dropped: 0,
         total: 0
@@ -173,7 +173,7 @@ const PacketFlowChart = ({ packets }) => {
           <LineChart data={chartData}>
             <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
             <XAxis 
-              dataKey="time" 
+              dataKey="index" 
               stroke="#94a3b8"
               style={{ fontSize: '12px' }}
             />

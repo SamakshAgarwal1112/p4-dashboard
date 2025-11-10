@@ -37,7 +37,7 @@ const PacketTable = ({ packets }) => {
             <TableHeader>
               <TableRow className="border-slate-800 hover:bg-transparent">
                 <TableHead className="text-slate-400 text-center">Time</TableHead>
-                <TableHead className="text-slate-400 text-center">ID</TableHead>
+                {/* <TableHead className="text-slate-400 text-center">ID</TableHead> */}
                 <TableHead className="text-slate-400 text-center">Source</TableHead>
                 <TableHead className="text-slate-400 text-center">Destination</TableHead>
                 <TableHead className="text-slate-400 text-center">Protocol</TableHead>
@@ -54,14 +54,14 @@ const PacketTable = ({ packets }) => {
                   <TableCell className="text-slate-300 font-mono text-xs">
                     {formatTime(packet.timestamp)}
                   </TableCell>
-                  <TableCell className="text-slate-300 font-mono text-sm">
+                  {/* <TableCell className="text-slate-300 font-mono text-sm">
                     #{packet.packet_id}
+                  </TableCell> */}
+                  <TableCell className="text-slate-300 font-mono text-xs">
+                    {packet.source_ip}
                   </TableCell>
                   <TableCell className="text-slate-300 font-mono text-xs">
-                    {packet.source_ip}:{packet.source_port}
-                  </TableCell>
-                  <TableCell className="text-slate-300 font-mono text-xs">
-                    {packet.dest_ip}:{packet.dest_port}
+                    {packet.dest_ip}
                   </TableCell>
                   <TableCell>
                     <Badge className={getProtocolColor(packet.protocol)}>

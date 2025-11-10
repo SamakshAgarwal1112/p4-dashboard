@@ -17,9 +17,9 @@ const Dashboard = () => {
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="p-2 bg-gradient-to-br from-cyan-500 to-blue-500 rounded-lg">
+              {/* <div className="p-2 bg-gradient-to-br from-cyan-500 to-blue-500 rounded-lg">
                 <Activity className="w-6 h-6 text-white" />
-              </div>
+              </div> */}
               <div>
                 <h1 className="text-2xl font-bold text-white">P4 Deep Packet Inspection</h1>
                 <p className="text-sm text-slate-400">Real-time Network Traffic Analysis</p>
@@ -64,8 +64,7 @@ const Dashboard = () => {
       <footer className="border-t border-slate-800 bg-slate-900/50 backdrop-blur-sm mt-12">
         <div className="container mx-auto px-4 py-6">
           <p className="text-center text-slate-500 text-sm">
-            P4 DPI Dashboard - Monitoring 24 packets
-            {/* P4 DPI Dashboard - Monitoring {packets.length} packets */}
+            P4 DPI Dashboard
           </p>
         </div>
       </footer>
