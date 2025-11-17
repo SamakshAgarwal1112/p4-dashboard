@@ -1,94 +1,130 @@
 import { useState, useEffect, useRef } from 'react';
-// import { generateMockPacket, generateInitialMockData } from '../mockData';
-import staticData from '../temp.json';
+import { io } from 'socket.io-client';
 
-// WebSocket hook with fallback to static data
-export const useWebSocket = (url = 'ws://localhost:8765') => {
-//   const [packets, setPackets] = useState(generateInitialMockData(50));
-  const [packets, setPackets] = useState(staticData);
+// WebSocket hook for Flask backend connection
+const BACKEND_URL = 'http://localhost:5000';
+const TIME_OFFSET_SECONDS = 360; // 6 minutes behind
+const DATA_WINDOW_SECONDS = 12; // Show only 10-12 seconds of data
+
+export const useWebSocket = () => {
+  const [packets, setPackets] = useState([]);
   const [isConnected, setIsConnected] = useState(false);
-//   const [connectionStatus, setConnectionStatus] = useState('connecting');
-  const [connectionStatus, setConnectionStatus] = useState('using static data');
-  const wsRef = useRef(null);
-//   const mockIntervalRef = useRef(null);
+  const [connectionStatus, setConnectionStatus] = useState('connecting');
+  const socketRef = useRef(null);
+  const requestIntervalRef = useRef(null);
 
   useEffect(() => {
-    // Load static data on mount
-    setPackets(staticData);
-    console.log('Using static data from temp.json');
+    console.log('Initializing Socket.IO connection to:', BACKEND_URL);
 
-    // Try to connect to WebSocket (optional, for future use)
-    try {
-      const ws = new WebSocket(url);
-      wsRef.current = ws;
+    // Create Socket.IO connection
+    const socket = io(BACKEND_URL, {
+      transports: ['websocket', 'polling'],
+      reconnection: true,
+      reconnectionDelay: 1000,
+      reconnectionAttempts: 5
+    });
 
-      ws.onopen = () => {
-        console.log('WebSocket connected');
-        setIsConnected(true);
-        setConnectionStatus('connected');
-        // Clear mock data interval if it was running
-        // if (mockIntervalRef.current) {
-        //   clearInterval(mockIntervalRef.current);
-        // }
-      };
+    socketRef.current = socket;
 
-      ws.onmessage = (event) => {
-        try {
-          const newPackets = JSON.parse(event.data);
-          if (Array.isArray(newPackets)) {
-            setPackets(prev => [...newPackets, ...prev].slice(0, 200));
-          } else {
-            setPackets(prev => [newPackets, ...prev].slice(0, 200));
-          }
-        } catch (error) {
-          console.error('Error parsing WebSocket message:', error);
-        }
-      };
+    // Connection event handlers
+    socket.on('connect', () => {
+      console.log('Socket.IO connected');
+      setIsConnected(true);
+      setConnectionStatus('connected');
+      
+      // Start streaming when connected
+      socket.emit('start_stream');
+    });
 
-    //   ws.onerror = (error) => {
-    //     console.log('WebSocket error, using mock data instead');
-    //     setIsConnected(false);
-    //     setConnectionStatus('using mock data');
-    //     startMockDataGeneration();
-    //   };
-      ws.onerror = () => {
-        console.log('WebSocket error, using static data');
-        setIsConnected(false);
-        setConnectionStatus('using static data');
-      };
-
-      ws.onclose = () => {
-        console.log('WebSocket disconnected, using static data');
-        setIsConnected(false);
-        setConnectionStatus('using static data');
-        // startMockDataGeneration();
-      };
-    } catch (error) {
-      console.log('WebSocket connection failed, using static data');
+    socket.on('disconnect', () => {
+      console.log('Socket.IO disconnected');
       setIsConnected(false);
-      setConnectionStatus('using static data');
-    //   startMockDataGeneration();
-    }
+      setConnectionStatus('disconnected');
+    });
 
-    return () => {
-      if (wsRef.current) {
-        wsRef.current.close();
+    socket.on('connection_response', (data) => {
+      console.log('Connection response:', data);
+    });
+
+    socket.on('stream_status', (data) => {
+      console.log('Stream status:', data);
+    });
+
+    // Handle continuous packet stream
+    socket.on('packets_stream', (data) => {
+      console.log(`Received ${data.count} packets at ${data.timestamp}`);
+      console.log(`Target time (6 min behind): ${data.target_time}`);
+      
+      if (data.packets && data.packets.length > 0) {
+        // Filter to show only last 10-12 seconds of data
+        const now = new Date(data.target_time);
+        const cutoffTime = new Date(now.getTime() - DATA_WINDOW_SECONDS * 1000);
+        
+        const filteredPackets = data.packets.filter(packet => {
+          const packetTime = new Date(packet.timestamp);
+          return packetTime >= cutoffTime;
+        });
+
+        console.log(`Filtered to ${filteredPackets.length} packets within ${DATA_WINDOW_SECONDS}s window`);
+        
+        // Update packets (keep only the latest window)
+        setPackets(filteredPackets.slice(0, 50));
+      } else {
+        console.log('No packets in current time window');
+        // Keep existing packets but log that no new data is available
+        setPackets(prev => prev.length > 0 ? prev : []);
       }
-    //   if (mockIntervalRef.current) {
-    //     clearInterval(mockIntervalRef.current);
-    //   }
+    });
+
+    // Handle packets update (response to manual requests)
+    socket.on('packets_update', (data) => {
+      console.log(`Packets update: ${data.count} packets`);
+      
+      if (data.packets && data.packets.length > 0) {
+        setPackets(data.packets.slice(0, 50));
+      }
+    });
+
+    // Handle errors
+    socket.on('error', (error) => {
+      console.error('Socket.IO error:', error);
+      setConnectionStatus('error');
+    });
+
+    socket.on('connect_error', (error) => {
+      console.error('Connection error:', error);
+      setIsConnected(false);
+      setConnectionStatus('connection_error');
+    });
+
+    // Cleanup on unmount
+    return () => {
+      console.log('Cleaning up Socket.IO connection');
+      
+      if (socketRef.current) {
+        socketRef.current.emit('stop_stream');
+        socketRef.current.disconnect();
+      }
+      
+      if (requestIntervalRef.current) {
+        clearInterval(requestIntervalRef.current);
+      }
     };
-  }, [url]);
+  }, []);
 
-//   const startMockDataGeneration = () => {
-//     if (!mockIntervalRef.current) {
-//       mockIntervalRef.current = setInterval(() => {
-//         const newPacket = generateMockPacket();
-//         setPackets(prev => [newPacket, ...prev].slice(0, 200));
-//       }, 2000);
-//     }
-//   };
+  // Manual request function (can be used to fetch specific data)
+  const requestPackets = (offset = TIME_OFFSET_SECONDS) => {
+    if (socketRef.current && socketRef.current.connected) {
+      console.log(`Manually requesting packets with ${offset}s offset`);
+      socketRef.current.emit('request_packets', { offset });
+    }
+  };
 
-  return { packets, isConnected, connectionStatus };
+  return { 
+    packets, 
+    isConnected, 
+    connectionStatus,
+    requestPackets 
+  };
 };
 
