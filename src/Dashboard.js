@@ -1,5 +1,6 @@
 import React from 'react';
 import { useWebSocket } from './hooks/useWebSocket';
+import { useStream } from './hooks/useStream';
 import MetricsCards from './components/MetricsCards';
 import PacketFlowChart from './components/PacketFlowChart';
 import ProtocolChart from './components/ProtocolChart';
@@ -8,7 +9,7 @@ import PacketTable from './components/PacketTable';
 import { Activity, Wifi, WifiOff } from 'lucide-react';
 
 const Dashboard = () => {
-  const { packets, isConnected, connectionStatus } = useWebSocket();
+  const { packets, isConnected, connectionStatus } = useStream();
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950" data-testid="dashboard-container">
