@@ -120,46 +120,19 @@ const PacketFlowChart = ({ packets }) => {
       return [];
     }
 
-    // Group packets by second (aggregate per second for cleaner chart)
-    const packetsBySecond = {};
-    
-    packets.forEach(packet => {
-      try {
-        const timestamp = new Date(packet.timestamp);
-        const secondKey = timestamp.toISOString().substring(0, 19); // YYYY-MM-DDTHH:MM:SS
-        
-        if (!packetsBySecond[secondKey]) {
-          packetsBySecond[secondKey] = {
-            time: timestamp.toLocaleTimeString('en-US', { 
-              hour12: false, 
-              hour: '2-digit',
-              minute: '2-digit', 
-              second: '2-digit' 
-            }),
-            timestamp: timestamp.getTime(),
-            forwarded: 0,
-            dropped: 0,
-            total: 0
-          };
-        }
-        
-        packetsBySecond[secondKey].total++;
-        if (packet.action === 'forwarded') {
-          packetsBySecond[secondKey].forwarded++;
-        } else {
-          packetsBySecond[secondKey].dropped++;
-        }
-      } catch (error) {
-        console.error('Error parsing timestamp:', error);
-      }
-    });
+    const formatted = packets.map(packet => {
+        const ts = packet.timestamp;
+        return {
+          id: packet.packet_id,
+          time: ts.split("T")[1].slice(0, -1),
+          timestamp: new Date(ts).getTime(),
+          forwarded: packet.action === 'forwarded' ? 1 : 0,
+          dropped: packet.action === 'dropped' ? 1 : 0,
+          total: 1,
+        };
+      }).slice(0, 69);
 
-    // Convert to array and sort by timestamp
-    const sortedData = Object.values(packetsBySecond)
-      .sort((a, b) => a.timestamp - b.timestamp)
-      .slice(-12); // Keep only last 12 seconds of data
-
-    return sortedData;
+      return formatted.sort((a, b) => a.timestamp - b.timestamp);
   }, [packets]);
 
   const CustomTooltip = ({ active, payload }) => {
@@ -205,7 +178,7 @@ const PacketFlowChart = ({ packets }) => {
       <CardHeader>
         <CardTitle className="text-slate-100 flex items-center gap-2">
           <div className="w-2 h-2 bg-cyan-500 rounded-full animate-pulse"></div>
-          Packet Flow Over Time (Last 12s)
+          Packet Flow Over Time
         </CardTitle>
       </CardHeader>
       <CardContent>
@@ -215,10 +188,10 @@ const PacketFlowChart = ({ packets }) => {
             <XAxis 
               dataKey="time" 
               stroke="#94a3b8"
-              style={{ fontSize: '11px' }}
-              angle={-45}
+              style={{ fontSize: '10px' }}
+              angle={-60}
               textAnchor="end"
-              height={60}
+              height={70}
             />
             <YAxis 
               stroke="#94a3b8"

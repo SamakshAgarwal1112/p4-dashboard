@@ -5,7 +5,7 @@ import { Badge } from './ui/badge';
 import { ScrollArea } from './ui/scroll-area';
 
 const PacketTable = ({ packets }) => {
-  const recentPackets = packets && packets.length > 0 ? packets.slice(0, 20) : [];
+  const recentPackets = packets && packets.length > 0 ? packets : [];
 
   const getProtocolColor = (protocol) => {
     if (protocol.includes('HTTP')) return 'bg-cyan-500/20 text-cyan-400 border-cyan-500/30';

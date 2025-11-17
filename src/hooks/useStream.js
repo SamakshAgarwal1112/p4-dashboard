@@ -39,15 +39,27 @@ export const useStream = () => {
       try {
         const data = JSON.parse(event.data);
 
-        const now = new Date(data.timestamp);
-        const cutoff = new Date(now.getTime() - DATA_WINDOW_SECONDS * 1000);
+        // const now = new Date(data.timestamp);
+        // const cutoff = new Date(now.getTime() - DATA_WINDOW_SECONDS * 1000);
 
-        const filtered = data.packets.filter((p) => {
-          const t = new Date(p.timestamp);
-          return t >= cutoff;
-        });
+        // const filtered = data.packets.filter((p) => {
+        //   const t = new Date(p.timestamp);
+        //   return t >= cutoff;
+        // });
 
-        setPackets(filtered.slice(0, 50));
+        // setPackets(filtered.slice(0, 50));
+        function utcToISTISO(utcTs) {
+          const d = new Date(utcTs);
+          const ist = new Date(d.getTime() + 5.5 * 60 * 60 * 1000);
+
+          return ist.toISOString();
+        }
+
+        const packetsIST = data.packets.map(p => ({
+          ...p,
+          timestamp: utcToISTISO(p.timestamp)
+        }));
+        setPackets(packetsIST);
       } catch (err) {
         console.error("Failed parsing SSE message:", err);
       }
