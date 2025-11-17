@@ -116,32 +116,50 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 
 const PacketFlowChart = ({ packets }) => {
   const chartData = useMemo(() => {
-    const intervals = [];
-    
-    for (let i = 0; i < packets.length; i++) {
-      intervals.push({
-        time: packets[i].timestamp.split("T")[1],
-        index: `T${i + 1}`,
-        forwarded: 0,
-        dropped: 0,
-        total: 0
-      });
+    if (!packets || packets.length === 0) {
+      return [];
     }
 
-    // Distribute packets evenly across intervals
-    packets.forEach((packet, index) => {
-      const intervalIndex = Math.floor(index);
-      if (intervalIndex >= 0 && intervalIndex < intervals.length) {
-        intervals[intervalIndex].total++;
-        if (packet.action === 'forwarded') {
-          intervals[intervalIndex].forwarded++;
-        } else {
-          intervals[intervalIndex].dropped++;
+    // Group packets by second (aggregate per second for cleaner chart)
+    const packetsBySecond = {};
+    
+    packets.forEach(packet => {
+      try {
+        const timestamp = new Date(packet.timestamp);
+        const secondKey = timestamp.toISOString().substring(0, 19); // YYYY-MM-DDTHH:MM:SS
+        
+        if (!packetsBySecond[secondKey]) {
+          packetsBySecond[secondKey] = {
+            time: timestamp.toLocaleTimeString('en-US', { 
+              hour12: false, 
+              hour: '2-digit',
+              minute: '2-digit', 
+              second: '2-digit' 
+            }),
+            timestamp: timestamp.getTime(),
+            forwarded: 0,
+            dropped: 0,
+            total: 0
+          };
         }
+        
+        packetsBySecond[secondKey].total++;
+        if (packet.action === 'forwarded') {
+          packetsBySecond[secondKey].forwarded++;
+        } else {
+          packetsBySecond[secondKey].dropped++;
+        }
+      } catch (error) {
+        console.error('Error parsing timestamp:', error);
       }
     });
 
-    return intervals;
+    // Convert to array and sort by timestamp
+    const sortedData = Object.values(packetsBySecond)
+      .sort((a, b) => a.timestamp - b.timestamp)
+      .slice(-12); // Keep only last 12 seconds of data
+
+    return sortedData;
   }, [packets]);
 
   const CustomTooltip = ({ active, payload }) => {
@@ -160,12 +178,34 @@ const PacketFlowChart = ({ packets }) => {
     return null;
   };
 
+  // Handle empty data
+  if (!chartData || chartData.length === 0) {
+    return (
+      <Card className="border-slate-800 bg-slate-900/50 backdrop-blur-sm">
+        <CardHeader>
+          <CardTitle className="text-slate-100 flex items-center gap-2">
+            <div className="w-2 h-2 bg-amber-500 rounded-full animate-pulse"></div>
+            Packet Flow Over Time
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center justify-center h-[300px] text-slate-400">
+            <div className="text-center">
+              <p className="text-lg mb-2">No packet data available</p>
+              <p className="text-sm">Waiting for packets from DPI system...</p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
   return (
     <Card className="border-slate-800 bg-slate-900/50 backdrop-blur-sm">
       <CardHeader>
         <CardTitle className="text-slate-100 flex items-center gap-2">
           <div className="w-2 h-2 bg-cyan-500 rounded-full animate-pulse"></div>
-          Packet Flow Distribution
+          Packet Flow Over Time (Last 12s)
         </CardTitle>
       </CardHeader>
       <CardContent>
@@ -173,13 +213,17 @@ const PacketFlowChart = ({ packets }) => {
           <LineChart data={chartData}>
             <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
             <XAxis 
-              dataKey="index" 
+              dataKey="time" 
               stroke="#94a3b8"
-              style={{ fontSize: '12px' }}
+              style={{ fontSize: '11px' }}
+              angle={-45}
+              textAnchor="end"
+              height={60}
             />
             <YAxis 
               stroke="#94a3b8"
               style={{ fontSize: '12px' }}
+              label={{ value: 'Packets', angle: -90, position: 'insideLeft', style: { fill: '#94a3b8' } }}
             />
             <Tooltip content={<CustomTooltip />} />
             <Legend 
@@ -192,6 +236,7 @@ const PacketFlowChart = ({ packets }) => {
               strokeWidth={2}
               dot={{ fill: '#06b6d4', r: 3 }}
               activeDot={{ r: 5 }}
+              name="Total"
             />
             <Line 
               type="monotone" 
@@ -199,6 +244,7 @@ const PacketFlowChart = ({ packets }) => {
               stroke="#10b981" 
               strokeWidth={2}
               dot={{ fill: '#10b981', r: 3 }}
+              name="Forwarded"
             />
             <Line 
               type="monotone" 
@@ -206,6 +252,7 @@ const PacketFlowChart = ({ packets }) => {
               stroke="#f43f5e" 
               strokeWidth={2}
               dot={{ fill: '#f43f5e', r: 3 }}
+              name="Dropped"
             />
           </LineChart>
         </ResponsiveContainer>

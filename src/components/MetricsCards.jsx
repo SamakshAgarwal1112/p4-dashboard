@@ -3,11 +3,15 @@ import { Card, CardContent } from './ui/card';
 import { Activity, Shield, Zap, Database } from 'lucide-react';
 
 const MetricsCards = ({ packets }) => {
-  const totalPackets = packets.length;
-  const forwardedPackets = packets.filter(p => p.action === 'forwarded').length;
-  const droppedPackets = packets.filter(p => p.action === 'dropped').length;
-  const avgPacketSize = packets.length > 0 
-    ? Math.round(packets.reduce((sum, p) => sum + p.packet_size, 0) / packets.length)
+  const totalPackets = packets && packets.length > 0 ? packets.length : 0;
+  const forwardedPackets = packets && packets.length > 0 
+    ? packets.filter(p => p.action === 'forwarded').length 
+    : 0;
+  const droppedPackets = packets && packets.length > 0 
+    ? packets.filter(p => p.action === 'dropped').length 
+    : 0;
+  const avgPacketSize = packets && packets.length > 0 
+    ? Math.round(packets.reduce((sum, p) => sum + (p.packet_size || 0), 0) / packets.length)
     : 0;
 
   const metrics = [
